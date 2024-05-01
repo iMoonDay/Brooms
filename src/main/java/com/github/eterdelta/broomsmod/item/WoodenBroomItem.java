@@ -2,7 +2,6 @@ package com.github.eterdelta.broomsmod.item;
 
 import com.github.eterdelta.broomsmod.entity.WoodenBroomEntity;
 import com.github.eterdelta.broomsmod.registry.BroomsItems;
-import net.minecraft.core.BlockPos;
 import net.minecraft.stats.Stats;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -37,7 +36,7 @@ public class WoodenBroomItem extends Item {
                 } else {
                     if (!level.isClientSide()) {
                         level.addFreshEntity(broom);
-                        level.gameEvent(player, GameEvent.ENTITY_PLACE, new BlockPos(hitResult.getLocation()));
+                        level.gameEvent(player, GameEvent.ENTITY_PLACE, hitResult.getLocation());
                         if (!player.getAbilities().instabuild) {
                             itemStack.shrink(1);
                         }

@@ -8,6 +8,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -88,7 +89,7 @@ public class WoodenBroomEntity extends Entity {
     public boolean hurt(DamageSource source, float amount) {
         if (this.isInvulnerableTo(source)) {
             return false;
-        } else if (!this.level.isClientSide && !this.isRemoved()) {
+        } else if (!this.level().isClientSide && !this.isRemoved()) {
             this.setHurtDir(-this.getHurtDir());
             this.setHurtTime(10);
             this.setDamage(this.getDamage() + amount * 10.0F);
@@ -96,7 +97,7 @@ public class WoodenBroomEntity extends Entity {
             this.gameEvent(GameEvent.ENTITY_DAMAGE, source.getEntity());
             boolean flag = source.getEntity() instanceof Player && ((Player) source.getEntity()).getAbilities().instabuild;
             if (flag || this.getDamage() > 40.0F) {
-                if (!flag && this.level.getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
+                if (!flag && this.level().getGameRules().getBoolean(GameRules.RULE_DOENTITYDROPS)) {
                     this.spawnBroomItem();
                 }
                 this.discard();
@@ -119,7 +120,7 @@ public class WoodenBroomEntity extends Entity {
     }
 
     @Override
-    public void animateHurt() {
+    public void animateHurt(float p_265161_) {
         this.setHurtDir(-this.getHurtDir());
         this.setHurtTime(10);
         this.setDamage(this.getDamage() * 11.0F);
@@ -152,7 +153,7 @@ public class WoodenBroomEntity extends Entity {
 
         this.setDeltaMovement(this.getDeltaMovement().multiply(0.8D, 0.9D, 0.8D));
 
-        if (!this.isOnGround() && !this.seaBreezing) {
+        if (!this.onGround() && !this.seaBreezing) {
             if (this.hoverTime > 0) {
                 this.canHover = true;
                 this.hoverTime--;
@@ -185,7 +186,7 @@ public class WoodenBroomEntity extends Entity {
         }
 
         if (this.isControlledByLocalInstance()) {
-            if (this.level.isClientSide) {
+            if (this.level().isClientSide) {
                 this.handleInputs();
             }
             this.move(MoverType.SELF, this.getDeltaMovement());
@@ -193,7 +194,7 @@ public class WoodenBroomEntity extends Entity {
             this.setDeltaMovement(Vec3.ZERO);
         }
 
-        if (this.level.getBlockState(this.blockPosition().below()).is(Blocks.WATER) && EnchantmentHelper.getItemEnchantmentLevel(BroomsEnchantments.SEA_BREEZE.get(), this.getItem()) > 0) {
+        if (this.level().getBlockState(this.blockPosition().below()).is(Blocks.WATER) && EnchantmentHelper.getItemEnchantmentLevel(BroomsEnchantments.SEA_BREEZE.get(), this.getItem()) > 0) {
             this.seaBreezing = true;
             if (this.getDeltaMovement().y() < 0) {
                 this.setDeltaMovement(this.getDeltaMovement().multiply(0.9D, 0.3D, 0.9D));
@@ -203,9 +204,9 @@ public class WoodenBroomEntity extends Entity {
         }
 
         this.checkInsideBlocks();
-        List<Entity> list = this.level.getEntities(this, this.getBoundingBox().inflate(0.2F, -0.01F, 0.2F), EntitySelector.pushableBy(this));
+        List<Entity> list = this.level().getEntities(this, this.getBoundingBox().inflate(0.2F, -0.01F, 0.2F), EntitySelector.pushableBy(this));
         if (!list.isEmpty()) {
-            boolean flag = !this.level.isClientSide && !(this.getControllingPassenger() instanceof Player);
+            boolean flag = !this.level().isClientSide && !(this.getControllingPassenger() instanceof Player);
 
             for (Entity entity : list) {
                 if (!entity.hasPassenger(this)) {
@@ -262,8 +263,8 @@ public class WoodenBroomEntity extends Entity {
     }
 
     @Override
-    public void positionRider(Entity rider) {
-        super.positionRider(rider);
+    protected void positionRider(Entity rider, MoveFunction p_19958_) {
+        super.positionRider(rider, p_19958_);
         if (rider instanceof Player player) {
             player.setYBodyRot(player.getYHeadRot());
         }
@@ -285,7 +286,7 @@ public class WoodenBroomEntity extends Entity {
         if (p_38330_.isSecondaryUseActive()) {
             return InteractionResult.PASS;
         } else {
-            if (!this.level.isClientSide()) {
+            if (!this.level().isClientSide()) {
                 return p_38330_.startRiding(this) ? InteractionResult.CONSUME : InteractionResult.PASS;
             } else {
                 return InteractionResult.SUCCESS;
@@ -299,8 +300,9 @@ public class WoodenBroomEntity extends Entity {
     }
 
     @Override
-    public Entity getControllingPassenger() {
-        return this.getFirstPassenger();
+    public LivingEntity getControllingPassenger() {
+        Entity passenger = this.getFirstPassenger();
+        return passenger instanceof LivingEntity livingEntity ? livingEntity : null;
     }
 
     public void setInputs(boolean left, boolean right, boolean up, boolean down, boolean jumping) {
@@ -312,7 +314,7 @@ public class WoodenBroomEntity extends Entity {
     }
 
     @Override
-    public Packet<?> getAddEntityPacket() {
+    public Packet<ClientGamePacketListener> getAddEntityPacket() {
         return NetworkHooks.getEntitySpawningPacket(this);
     }
 
@@ -387,7 +389,7 @@ public class WoodenBroomEntity extends Entity {
     }
 
     public float getSpeed() {
-        if (this.isOnGround()) {
+        if (this.onGround()) {
             return 0.08F + (0.08F * (this.getItem().getEnchantmentLevel(BroomsEnchantments.LAND_SKILLS.get())) * 20 / 100.0F);
         } else {
             return 0.08F + (0.08F * (this.getItem().getEnchantmentLevel(BroomsEnchantments.AIR_SKILLS.get())) * 20 / 100.0F);
